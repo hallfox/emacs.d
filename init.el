@@ -7,6 +7,7 @@
   (menu-bar-mode -1))
 (fset 'yes-or-no-p 'y-or-n-p)
 (global-set-key (kbd "<f5>") 'revert-buffer)
+(defalias 'list-buffers 'ibuffer)
 
 ;; Load custom file
 (setq custom-file (expand-file-name "custom.el" user-emacs-directory))
@@ -50,7 +51,6 @@
    ("M-x"	.	counsel-M-x)
    ("C-s"	.	swiper)
    ("C-x C-f"	.	counsel-find-file)
-   ("C-c g"	.	counsel-git)
    ("C-c s"	.	counsel-ag)
    ))
 
@@ -90,7 +90,11 @@
   :config
   (global-flycheck-mode t))
 
-
+;; Magit
+(use-package magit
+  :ensure t
+  :bind
+  ("C-x g" . magit-status))
 
 
 ;; After package loads
