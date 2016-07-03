@@ -8,6 +8,8 @@
 (fset 'yes-or-no-p 'y-or-n-p)
 (global-set-key (kbd "<f5>") 'revert-buffer)
 (defalias 'list-buffers 'ibuffer)
+(when (fboundp 'winner-mode)
+  (winner-mode 1))
 
 ;; Load custom file
 (setq custom-file (expand-file-name "custom.el" user-emacs-directory))
@@ -17,7 +19,8 @@
 (require 'package)
 (setq package-enable-at-startup nil)
 (add-to-list 'package-archives
-	     '("melpa" . "https://melpa.org/packages/"))
+	     '("melpa" . "https://melpa.org/packages/")
+	     '("org" . "http://orgmode.org/elpa/"))
 
 (package-initialize)
 
@@ -96,5 +99,59 @@
   :bind
   ("C-x g" . magit-status))
 
+;; Projectile
+(use-package projectile
+  :ensure t
+  :init
+  (setq projectile-completion-system 'ivy)
+  :config
+  (projectile-global-mode))
+
+;; Dired+
+(use-package dired+
+  :ensure t)
+
+;; Org mode
+(use-package org
+  :ensure t
+  )
+
+(use-package org-journal
+  :ensure t
+  :init
+  (setq org-journal-dir "~/Dropbox/journal"))
+
+;; Exec path from shell
+(use-package exec-path-from-shell
+  :ensure t
+  :config
+  (when (memq window-system '(mac ns))
+    (exec-path-from-shell-initialize)))
+
+;; YASnippet
+(use-package yasnippet
+  :ensure t
+  :init (add-to-list 'load-path "~/.emacs.d/plugins/yasnippet")
+  :config
+  (yas-global-mode))
+
+;; Smart mode line
+(use-package smart-mode-line
+  :ensure t
+  :config (sml/setup))
+
+;; Smartparens
+(use-package smartparens
+  :ensure t
+  :config (smartparens-global-mode))
+
+;; Languages
+
+;; Rust
+(use-package rust-mode
+  :ensure t
+  :mode "\\.rs\\'")
+
 
 ;; After package loads
+
