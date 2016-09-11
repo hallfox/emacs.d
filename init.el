@@ -11,6 +11,11 @@
 (when (fboundp 'winner-mode)
   (winner-mode 1))
 
+;; Recentf
+(require 'recentf)
+(recentf-mode 1)
+(setq recentf-max-menu-items 30)
+
 ;; Load custom file
 (setq custom-file (expand-file-name "custom.el" user-emacs-directory))
 (when (file-exists-p custom-file)
@@ -18,9 +23,10 @@
 
 (require 'package)
 (setq package-enable-at-startup nil)
-(add-to-list 'package-archives
-	     '("melpa" . "https://melpa.org/packages/")
-	     '("org" . "http://orgmode.org/elpa/"))
+(setq package-archives
+      '(("melpa" . "https://melpa.org/packages/")
+	("melpa-stable" . "https://stable.melpa.org/packages/")
+	("org" . "http://orgmode.org/elpa/")))
 
 (package-initialize)
 
@@ -29,21 +35,19 @@
   (package-refresh-contents)
   (package-install 'use-package))
 
-(use-package try
-	     :ensure t)
+;; Use-package config
+(setq use-package-always-ensure t)
+
+(use-package try)
 
 (use-package which-key
-	     :ensure t
 	     :config
 	     (which-key-mode))
 
 ;; Swiper mode
-(use-package counsel
-  :ensure t
-  )
+(use-package counsel)
 
 (use-package swiper
-  :ensure t
   :config
   (progn
     (ivy-mode 1)
@@ -55,18 +59,17 @@
    ("C-s"	.	swiper)
    ("C-x C-f"	.	counsel-find-file)
    ("C-c s"	.	counsel-ag)
+   ("C-x C-r"   .       ivy-recentf)
    ))
 
 ;; Avy
 (use-package avy
-  :ensure t
   :bind
   ("C-'" . avy-goto-char)
   )
 
 ;; Ace window
 (use-package ace-window
-  :ensure t
   :config
   (setq aw-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l))
   :bind
@@ -74,7 +77,6 @@
 
 ;; Auto complete
 (use-package auto-complete
-  :ensure t
   :init
   (progn
     (ac-config-default)
@@ -82,76 +84,98 @@
     ))
 
 ;; Themes
-(use-package color-theme-sanityinc-tomorrow
-  :ensure t)
+(use-package color-theme-sanityinc-tomorrow)
+(use-package gruvbox-theme)
 
-(load-theme 'sanityinc-tomorrow-bright)
+(load-theme 'gruvbox)
 
 ;; Syntax checking
 (use-package flycheck
-  :ensure t
   :config
   (global-flycheck-mode t))
 
 ;; Magit
 (use-package magit
-  :ensure t
   :bind
   ("C-x g" . magit-status))
 
 ;; Projectile
 (use-package projectile
-  :ensure t
   :init
   (setq projectile-completion-system 'ivy)
   :config
   (projectile-global-mode))
 
 ;; Dired+
-(use-package dired+
-  :ensure t)
+(use-package dired+)
 
 ;; Org mode
-(use-package org
-  :ensure t
-  )
+(use-package org)
 
 (use-package org-journal
-  :ensure t
   :init
   (setq org-journal-dir "~/Dropbox/journal"))
 
 ;; Exec path from shell
 (use-package exec-path-from-shell
-  :ensure t
   :config
   (when (memq window-system '(mac ns))
     (exec-path-from-shell-initialize)))
 
 ;; YASnippet
 (use-package yasnippet
-  :ensure t
   :init (add-to-list 'load-path "~/.emacs.d/plugins/yasnippet")
   :config
   (yas-global-mode))
 
 ;; Smart mode line
-(use-package smart-mode-line
-  :ensure t
-  :config (sml/setup))
+;; (use-package smart-mode-line   :config (sml/setup))
+
+;; Spaceline
+(use-package spaceline)
 
 ;; Smartparens
 (use-package smartparens
-  :ensure t
-  :config (smartparens-global-mode))
+  :config (smartparens-global-mode)
+  :bind
+  (("M-[" . sp-forward-barf-sexp)
+   ("M-]" . sp-forward-slurp-sexp)))
+
+;; Eyebrowse
+(use-package eyebrowse
+  :config (eyebrowse-mode t))
 
 ;; Languages
 
 ;; Rust
 (use-package rust-mode
-  :ensure t
-  :mode "\\.rs\\'")
+  :mode "\\.rs\\'"
+  :config
+  (progn
+    (when (fboundp 'sp-local-pair)
+      (sp-local-pair 'rust-mode "'" nil :actions nil))))
+(use-package flycheck-rust
+  :config (add-hook 'flycheck-mode-hook #'flycheck-rust-setup))
+(use-package cargo
+  :config (add-hook 'rust-mode-hook 'cargo-minor-mode))
 
+;; Elm
+(use-package elm-mode
+  :mode "\\.elm\\'"
+  :config (add-hook 'elm-mode-hook #'elm-oracle-setup-ac))
+
+;; Scala
+(use-package ensime
+  :pin melpa-stable)
 
 ;; After package loads
+
+;; Colorize compilation buffers
+(setq-default compilation-scroll-output t)
+(ignore-errors
+  (require 'ansi-color)
+  (defun hallfox/colorize-compilation-buffer ()
+    (when (eq major-mode 'compilation-mode)
+      (ansi-color-apply-on-region compilation-filter-start (point-max))))
+  (add-hook 'compilation-filter-hook 'hallfox/colorize-compilation-buffer))
 
