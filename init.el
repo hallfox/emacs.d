@@ -6,7 +6,6 @@
 	 (scroll-bar-mode -1))
   (menu-bar-mode -1))
 (fset 'yes-or-no-p 'y-or-n-p)
-(global-set-key (kbd "<f5>") 'revert-buffer)
 (defalias 'list-buffers 'ibuffer)
 (when (fboundp 'winner-mode)
   (winner-mode 1))
@@ -26,7 +25,8 @@
 (setq package-archives
       '(("melpa" . "https://melpa.org/packages/")
 	("melpa-stable" . "https://stable.melpa.org/packages/")
-	("org" . "http://orgmode.org/elpa/")))
+	("org" . "http://orgmode.org/elpa/")
+	("gnu" . "https://elpa.gnu.org/packages/")))
 
 (package-initialize)
 
@@ -41,8 +41,9 @@
 (use-package try)
 
 (use-package which-key
-	     :config
-	     (which-key-mode))
+  :diminish which-key-mode
+  :config
+  (which-key-mode))
 
 ;; Swiper mode
 (use-package counsel)
@@ -53,6 +54,7 @@
     (ivy-mode 1)
     (setq ivy-use-virtual-buffers t)
     )
+  :diminish ivy-mode
   :bind
   (("C-c C-r"	.	ivy-resume)
    ("M-x"	.	counsel-M-x)
@@ -76,12 +78,22 @@
   ("C-x o" . ace-window))
 
 ;; Auto complete
-(use-package auto-complete
-  :init
-  (progn
-    (ac-config-default)
-    (global-auto-complete-mode t)
-    ))
+;; (use-package auto-complete
+;;   :init
+;;   (progn
+;;     (ac-config-default)
+;;     (global-auto-complete-mode t)
+;;     )
+;;   :diminish auto-complete-mode)
+
+(use-package company
+  :init (add-hook 'after-init-hook 'global-company-mode)
+  :diminish 'company-mode
+  )
+
+;; Diminish
+(use-package diminish)
+(diminish 'auto-revert-mode)
 
 ;; Themes
 (use-package color-theme-sanityinc-tomorrow)
@@ -92,13 +104,14 @@
 ;; Syntax checking
 (use-package flycheck
   :config
-  (global-flycheck-mode t))
+  (global-flycheck-mode t)
+  :diminish flycheck-mode)
 
 ;; Magit
 (use-package magit
   :bind
   ("C-x g" . magit-status))
-
+}
 ;; Projectile
 (use-package projectile
   :init
@@ -124,40 +137,94 @@
 
 ;; YASnippet
 (use-package yasnippet
-  :init (add-to-list 'load-path "~/.emacs.d/plugins/yasnippet")
+  :init (add-hook 'term-mode-hook (lambda ()
+				    (yas-minor-mode -1)))
+  :load-path "~/.emacs.d/plugins/yasnippet"
+  :diminish yas-minor-mode
   :config
-  (yas-global-mode))
+  (yas-global-mode)
+  :bind (("C-c i s" . yas-insert-snippet)
+	 ("M-/" . yas-expand)))
 
-;; Smart mode line
-;; (use-package smart-mode-line   :config (sml/setup))
+;; Multi-term
+(use-package multi-term
+  :init (setq multi-term-program "/bin/zsh")
+  :bind
+  (("C-c C-'" . multi-term-dedicated-toggle)
+   ("C-c '" . multi-term)
+   :map term-mode-map
+   ("M-]" . multi-term-next)
+   ("M-[" . multi-term-prev)
+   ))
 
 ;; Spaceline
-(use-package spaceline)
+;; (use-package spaceline-config
+;;   :ensure spaceline
+;;   :config (spaceline-emacs-theme)
+;;   )
+
+;; Telephone line
+(use-package telephone-line
+  :config (telephone-line-mode 1))
 
 ;; Smartparens
 (use-package smartparens
   :config (smartparens-global-mode)
   :bind
   (("M-[" . sp-forward-barf-sexp)
-   ("M-]" . sp-forward-slurp-sexp)))
+   ("M-]" . sp-forward-slurp-sexp))
+  :diminish smartparens-mode)
 
 ;; Eyebrowse
 (use-package eyebrowse
   :config (eyebrowse-mode t))
 
+;; Fancy battery
+(use-package fancy-battery
+  :init (add-hook 'after-init-hook #'fancy-battery-mode))
+
 ;; Languages
+
+;; C/C++
+(use-package irony
+  :config
+  (add-hook 'c++-mode-hook 'irony-mode)
+  (add-hook 'c-mode-hook 'irony-mode)
+  (add-hook 'objc-mode-hook 'irony-mode)
+
+  ;; replace the `completion-at-point' and `complete-symbol' bindings in
+  ;; irony-mode's buffers by irony-mode's function
+  (defun my-irony-mode-hook ()
+    (define-key irony-mode-map [remap completion-at-point]
+      'irony-completion-at-point-async)
+    (define-key irony-mode-map [remap complete-symbol]
+      'irony-completion-at-point-async))
+  (add-hook 'irony-mode-hook 'my-irony-mode-hook)
+  (add-hook 'irony-mode-hook 'irony-cdb-autosetup-compile-options))
+
+;; Python
+(use-package python
+  :mode ("\\.py\\'" . python-mode)
+  :interpreter ("python3" . python-mode))
+
+(use-package ein)
 
 ;; Rust
 (use-package rust-mode
   :mode "\\.rs\\'"
   :config
-  (progn
-    (when (fboundp 'sp-local-pair)
-      (sp-local-pair 'rust-mode "'" nil :actions nil))))
+  (when (fboundp 'sp-local-pair)
+    (sp-local-pair 'rust-mode "'" nil :actions nil)))
+
 (use-package flycheck-rust
   :config (add-hook 'flycheck-mode-hook #'flycheck-rust-setup))
+
 (use-package cargo
   :config (add-hook 'rust-mode-hook 'cargo-minor-mode))
+
+;; Golang
+(use-package go-mode
+  :mode ("\\.go\\'" . go-mode))
 
 ;; Elm
 (use-package elm-mode
@@ -167,6 +234,20 @@
 ;; Scala
 (use-package ensime
   :pin melpa-stable)
+
+;; Clojure
+(use-package clojure-mode
+  :mode "\\.clj\\'"
+  )
+
+(use-package cider)
+
+;; Haskell
+
+(use-package haskell-mode
+  :mode ("(\\.hs\\'|\\.lhs')" . haskell-mode)
+  :interpreter ("stack ghci" . haskell-mode))
+
 
 ;; After package loads
 
@@ -178,4 +259,3 @@
     (when (eq major-mode 'compilation-mode)
       (ansi-color-apply-on-region compilation-filter-start (point-max))))
   (add-hook 'compilation-filter-hook 'hallfox/colorize-compilation-buffer))
-
