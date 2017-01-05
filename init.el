@@ -2,13 +2,16 @@
 (setq inhibit-startup-message t)
 (setq make-backup-files nil)
 (if (display-graphic-p)
-  (progn (tool-bar-mode -1)
-	 (scroll-bar-mode -1))
+    (progn (tool-bar-mode -1)
+	   (scroll-bar-mode -1))
   (menu-bar-mode -1))
 (fset 'yes-or-no-p 'y-or-n-p)
 (defalias 'list-buffers 'ibuffer)
 (when (fboundp 'winner-mode)
   (winner-mode 1))
+(global-hl-line-mode)
+(global-auto-revert-mode)
+(pending-delete-mode t)
 
 ;; Recentf
 (require 'recentf)
@@ -34,6 +37,14 @@
 (unless (package-installed-p 'use-package)
   (package-refresh-contents)
   (package-install 'use-package))
+
+;; My defuns
+(defun indent-buffer ()
+  "Indent current buffer according to major mode."
+  (interactive)
+  (indent-region (point-min) (point-max)))
+
+(global-set-key (kbd "C-c TAB") 'indent-buffer)
 
 ;; Use-package config
 (setq use-package-always-ensure t)
@@ -61,7 +72,7 @@
    ("C-s"	.	swiper)
    ("C-x C-f"	.	counsel-find-file)
    ("C-c s"	.	counsel-ag)
-   ("C-x C-r"   .       ivy-recentf)
+   ("C-x C-r"   .       counsel-recentf)
    ))
 
 ;; Avy
@@ -76,15 +87,6 @@
   (setq aw-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l))
   :bind
   ("C-x o" . ace-window))
-
-;; Auto complete
-;; (use-package auto-complete
-;;   :init
-;;   (progn
-;;     (ac-config-default)
-;;     (global-auto-complete-mode t)
-;;     )
-;;   :diminish auto-complete-mode)
 
 (use-package company
   :init (add-hook 'after-init-hook 'global-company-mode)
@@ -111,13 +113,22 @@
 (use-package magit
   :bind
   ("C-x g" . magit-status))
-}
+
 ;; Projectile
+
+(defun projectile-open-multiterm-at-root ()
+  "Invoke multi-term at project's root."
+  (interactive)
+  (projectile-with-default-dir (projectile-project-root) (multi-term)))
+
 (use-package projectile
   :init
   (setq projectile-completion-system 'ivy)
   :config
-  (projectile-global-mode))
+  (projectile-global-mode)
+  :bind (:map projectile-mode-map
+	      ("C-c p $" . projectile-open-multiterm-at-root))
+  )
 
 ;; Dired+
 (use-package dired+)
@@ -143,37 +154,56 @@
   :diminish yas-minor-mode
   :config
   (yas-global-mode)
-  :bind (("C-c i s" . yas-insert-snippet)
-	 ("M-/" . yas-expand)))
+  :bind (:map yas-minor-mode-map
+	      ("C-c i s" . yas-insert-snippet)
+	      ("M-/" . yas-expand)))
 
 ;; Multi-term
 (use-package multi-term
   :init (setq multi-term-program "/bin/zsh")
   :bind
-  (("C-c C-'" . multi-term-dedicated-toggle)
-   ("C-c '" . multi-term)
+  (("C-c T" . multi-term-dedicated-toggle)
+   ("C-c t" . multi-term)
    :map term-mode-map
    ("M-]" . multi-term-next)
    ("M-[" . multi-term-prev)
    ))
 
-;; Spaceline
-;; (use-package spaceline-config
-;;   :ensure spaceline
-;;   :config (spaceline-emacs-theme)
-;;   )
-
 ;; Telephone line
 (use-package telephone-line
   :config (telephone-line-mode 1))
 
+;; Google
+(use-package google-this
+  :diminish google-this-mode
+  :config (google-this-mode 1))
+
 ;; Smartparens
 (use-package smartparens
-  :config (smartparens-global-mode)
-  :bind
-  (("M-[" . sp-forward-barf-sexp)
-   ("M-]" . sp-forward-slurp-sexp))
-  :diminish smartparens-mode)
+  :init (add-hook 'prog-mode-hook 'turn-on-smartparens-strict-mode)
+  :config (require 'smartparens-config)
+  :bind (:map smartparens-mode-map
+	      ("C-M-f" . sp-forward-sexp)
+	      ("C-M-b" . sp-backward-sexp)
+	      ("C-M-n" . sp-next-sexp)
+	      ("C-M-p" . sp-previous-sexp)
+	      ("C-M-a" . sp-begginning-of-sexp)
+	      ("C-M-e" . sp-end-of-sexp)
+	      ("C-M-d" . sp-kill-sexp)
+	      ("C-M-DEL" . sp-backward-kill-sexp)
+	      ("C-M-t" . sp-transpose-sexp)
+	      ("C-(" . sp-backward-slurp-sexp)
+	      ("C-)" . sp-forward-slurp-sexp)
+	      ("C-S-(" . sp-backward-barf-sexp)
+	      ("C-S-)" . sp-forward-barf-sexp)
+	      ("C-c (" . sp-rewrap-sexp)
+	      ("C-c )" . sp-unwrap-sexp)
+	      ))
+
+;; Expand region
+(use-package expand-region
+  :config (require 'expand-region)
+  :bind ("C-=" . er/expand-region))
 
 ;; Eyebrowse
 (use-package eyebrowse
@@ -186,41 +216,33 @@
 ;; Languages
 
 ;; C/C++
-(use-package irony
-  :config
-  (add-hook 'c++-mode-hook 'irony-mode)
-  (add-hook 'c-mode-hook 'irony-mode)
-  (add-hook 'objc-mode-hook 'irony-mode)
-
-  ;; replace the `completion-at-point' and `complete-symbol' bindings in
-  ;; irony-mode's buffers by irony-mode's function
-  (defun my-irony-mode-hook ()
-    (define-key irony-mode-map [remap completion-at-point]
-      'irony-completion-at-point-async)
-    (define-key irony-mode-map [remap complete-symbol]
-      'irony-completion-at-point-async))
-  (add-hook 'irony-mode-hook 'my-irony-mode-hook)
-  (add-hook 'irony-mode-hook 'irony-cdb-autosetup-compile-options))
 
 ;; Python
-(use-package python
-  :mode ("\\.py\\'" . python-mode)
-  :interpreter ("python3" . python-mode))
 
-(use-package ein)
+(setq py-python-command "python3")
+(setq python-shell-interpreter "python3")
+
+(use-package company-jedi
+  :init (add-hook 'python-mode-hook (lambda ()
+				      (add-to-list 'company-backends 'company-jedi))))
+
+(use-package elpy
+  :init (setq elpy-rpc-python-command "python3")
+  :config (elpy-enable))
 
 ;; Rust
 (use-package rust-mode
   :mode "\\.rs\\'"
+  :bind (:map rust-mode-map ("C-c TAB" . rust-format-buffer))
   :config
   (when (fboundp 'sp-local-pair)
     (sp-local-pair 'rust-mode "'" nil :actions nil)))
 
 (use-package flycheck-rust
-  :config (add-hook 'flycheck-mode-hook #'flycheck-rust-setup))
+  :init (add-hook 'flycheck-mode-hook #'flycheck-rust-setup))
 
 (use-package cargo
-  :config (add-hook 'rust-mode-hook 'cargo-minor-mode))
+  :init (add-hook 'rust-mode-hook 'cargo-minor-mode))
 
 ;; Golang
 (use-package go-mode
@@ -229,7 +251,7 @@
 ;; Elm
 (use-package elm-mode
   :mode "\\.elm\\'"
-  :config (add-hook 'elm-mode-hook #'elm-oracle-setup-ac))
+  :init (add-hook 'elm-mode-hook #'elm-oracle-setup-ac))
 
 ;; Scala
 (use-package ensime
@@ -246,7 +268,18 @@
 
 (use-package haskell-mode
   :mode ("(\\.hs\\'|\\.lhs')" . haskell-mode)
-  :interpreter ("stack ghci" . haskell-mode))
+  :config (setq haskell-process-type 'stack-ghci)
+  :bind (:map haskell-mode-map
+	      ("C-c C-z" . haskell-interactive-bring)
+	      ("C-c C-l" . haskell-process-load-or-reload)
+	      ("C-c C-t" . haskell-process-do-type)
+	      ("C-c C-k" . haskell-interactive-mode-clear)))
+
+;; Elixir
+(use-package elixir-mode
+  :mode "(\\.ex\\'|\\.exs')")
+
+(use-package alchemist)
 
 
 ;; After package loads
