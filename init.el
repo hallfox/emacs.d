@@ -216,7 +216,7 @@
 (setenv "PAGER" "cat")
 
 (use-package multi-term
-  :init (setq multi-term-program "/bin/zsh")
+  :init (setq multi-term-program "/usr/local/bin/fish")
   :bind
   (("C-c t" . multi-term-dedicated-toggle)
    ("C-'" . multi-term)

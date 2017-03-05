@@ -23,8 +23,12 @@
  '(org-list-allow-alphabetical t)
  '(package-selected-packages
    (quote
-    (htmlize ox-reveal ob-elixir toml-mode color-moccur neotree all-the-icons persp-mode better-shell open-junk-file 4clojure yaml-mode ace-link intero ghc org-gcal hydra ledger-mode ag aggressive-indent aggresive-indent tuareg tuareg-mode ample-theme beacon easy-kill zzz-to-char hungry-delete visual-regexp-steroids visual-regexp expand-region paredit company-jedi elpy jedi autopair alchemist elixir-mode company-irony undo-tree flycheck-irony google-maps google-this go-mode telephone-line irony irony-mode company ein multi-term racket-mode fancy-battery rotate python elm-mode cargo flycheck-rust rust-mode smartparens exec-path-from-shell org-journal dired+ projectile magit flycheck color-theme-sanityinc-tomorrow auto-complete ace-window avy which-key try use-package yasnippet cider clojure-mode haskell-mode inf-ruby ensime eyebrowse gruvbox-theme spaceline)))
+    (erlang fish-mode helm htmlize ox-reveal ob-elixir toml-mode color-moccur neotree all-the-icons persp-mode better-shell open-junk-file 4clojure yaml-mode ace-link intero ghc org-gcal hydra ledger-mode ag aggressive-indent aggresive-indent tuareg tuareg-mode ample-theme beacon easy-kill zzz-to-char hungry-delete visual-regexp-steroids visual-regexp expand-region paredit company-jedi elpy jedi autopair alchemist elixir-mode company-irony undo-tree flycheck-irony google-maps google-this go-mode telephone-line irony irony-mode company ein multi-term racket-mode fancy-battery rotate python elm-mode cargo flycheck-rust rust-mode smartparens exec-path-from-shell org-journal dired+ projectile magit flycheck color-theme-sanityinc-tomorrow auto-complete ace-window avy which-key try use-package yasnippet cider clojure-mode haskell-mode inf-ruby ensime eyebrowse gruvbox-theme spaceline)))
  '(python-shell-interpreter "python3")
+ '(safe-local-variable-values
+   (quote
+    ((flycheck-clang-include-path . "-I/usr/local/opt/openssl/include")
+     (flycheck-clang-include-path . -I/usr/local/opt/openssl/include))))
  '(smartparens-global-mode t))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
