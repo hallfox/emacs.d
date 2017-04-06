@@ -1,22 +1,18 @@
 ;; Do some basic interface changes
-(setq inhibit-startup-message t)
-(setq make-backup-files nil)
-(if (display-graphic-p)
-    (progn (tool-bar-mode -1)
-	   (scroll-bar-mode -1))
-  (menu-bar-mode -1))
 (fset 'yes-or-no-p 'y-or-n-p)
-(defalias 'list-buffers 'ibuffer)
 (when (fboundp 'winner-mode)
   (winner-mode t))
+(setq inhibit-startup-screen t)
 (global-hl-line-mode t)
 (global-auto-revert-mode t)
 (pending-delete-mode t)
 (setq tramp-default-method "ssh")
+(show-paren-mode t)
+(setq show-paren-style 'expression)
 
 ;; Prettify symbols
 (defconst lisp--prettify-symbols-alist
-  '(("lambda" . ?λ)))
+  '(("lambda"           . ?λ)))
 (add-hook 'emacs-lisp-mode 'prettify-symbols-mode)
 (add-hook 'scheme-mode 'prettify-symbols-mode)
 
@@ -24,6 +20,11 @@
 (require 'recentf)
 (recentf-mode 1)
 (setq recentf-max-menu-items 30)
+
+;; Mac keyboard fix
+(when (eq system-type 'darwin)
+  (setq mac-option-modifier 'super)
+  (setq mac-command-modifier 'meta))
 
 ;; Compile shortcuts
 (global-set-key (kbd "C-x m") 'compile)
@@ -42,66 +43,144 @@
 (require 'package)
 (setq package-enable-at-startup nil)
 (setq package-archives
-      '(("melpa" . "https://melpa.org/packages/")
+      '(("melpa"        . "https://melpa.org/packages/")
 	("melpa-stable" . "https://stable.melpa.org/packages/")
-	("org" . "http://orgmode.org/elpa/")
-	("gnu" . "https://elpa.gnu.org/packages/")))
+	("org"          . "http://orgmode.org/elpa/")
+	("gnu"          . "https://elpa.gnu.org/packages/")))
 
 (package-initialize)
 (package-refresh-contents)
 
-;; Bootstrap `use-packages'
-(unless (package-installed-p 'use-package)
-  (package-refresh-contents)
-  (package-install 'use-package))
+;; Bootstrap quelpa
+(if (require 'quelpa nil t)
+    (quelpa-self-upgrade)
+  (with-temp-buffer
+    (url-insert-file-contents "https://raw.github.com/quelpa/quelpa/master/bootstrap . el")
+    (eval-buffer)))
+
+;; Bootstrap `quelpa-use-package'
+(quelpa
+ '(quelpa-use-package
+   :fetcher github
+   :repo "quelpa/quelpa-use-package"))
+(require 'quelpa-use-package)
+
+;; Very important
+(setq use-package-always-ensure t)
 
 ;; My defuns
 (defun indent-buffer ()
-  "Indent current buffer according to major mode."
+  "Indent current buffer according to major mode . "
   (interactive)
   (indent-region (point-min) (point-max)))
 
 (global-set-key (kbd "C-c TAB") 'indent-buffer)
 
-;; Use-package config
-(setq use-package-always-ensure t)
-
 (use-package try)
+(use-package better-defaults
+  :config (setq visible-bell nil))
 
 (use-package which-key
+  :defer t
   :diminish which-key-mode
   :config
   (which-key-mode))
 
-;; ivy
-(use-package ivy
+;; ivy, swiper, counsel
+(use-package ivy)
+(use-package swiper)
+(use-package counsel
+  :init
+  (setq ivy-use-virtual-buffers t
+	;; Format for completions
+	ivy-count-format "(%d/%d) "
+	ivy-wrap t
+	;; Get rid of . / and ../
+	ivy-extra-directories nil)
   :config
-  (progn
-    (ivy-mode 1)
-    (setq ivy-use-virtual-buffers t)
-    )
+  (ivy-mode 1)
   :diminish ivy-mode
   :bind
-  (("C-c C-r"	.	ivy-resume)
-   ("M-x"	.	counsel-M-x)
-   ("C-s"	.	swiper)
-   ("C-x C-f"	.	counsel-find-file)
-   ("C-c s"	.	counsel-ag)
-   ("C-x C-r"   .       counsel-recentf)
-   ))
+  (("C-c C-r" . ivy-resume)
+   ("M-x"     . counsel-M-x)
+   ("C-s"     . swiper)
+   ("C-x C-f" . counsel-find-file)
+   ("C-c s"   . counsel-rg)
+   ("C-x C-r" . counsel-recentf)
+   ("C-c j"   . counsel-imenu)
+   ("C-x r b" . counsel-bookmark)
+   ("M-y"     . counsel-yank-pop)
+   ("C-c m"   .	counsel-mark-ring)
+   ("C-h f"   .	counsel-describe-function)
+   ("C-h v"   .	counsel-describe-variable)
+   ("C-c l"   .	counsel-locate)))
 
-;; Avy
+(use-package helm-make
+  :init
+  (setq helm-make-completion-method 'ivy)
+  :bind
+  ("C-x C-M-m" . helm-make)
+  :ensure helm)
+
 (use-package avy
   :bind
-  ("C-j" . avy-goto-char)
-  )
+  (("C-;" . avy-goto-char)
+   ("C-x C-SPC" . avy-pop-mark)))
+
+;; (use-package helm
+;;   :defer t
+;;   :init
+;;   (unbind-key "C-x c")
+;;   (setq helm-split-window-in-side-p           t ; open helm buffer inside current window, not occupy whole other window
+;;       helm-move-to-line-cycle-in-source     t ; move to end or beginning of source when reaching top or bottom of source.
+;;       helm-ff-search-library-in-sexp        t ; search for library in `require' and `declare-function' sexp.
+;;       helm-scroll-amount                    8 ; scroll 8 lines other window using M-<next>/M-<prior>
+;;       helm-ff-file-name-history-use-recentf t
+;;       helm-echo-input-in-header-line t)
+;;   :config
+;;   (progn
+;;     (require 'helm-config)
+;;     (use-package helm-swoop)
+
+;;     (when (executable-find "curl")
+;;       (setq helm-google-suggest-use-curl-p t))
+
+;;     (defun spacemacs//helm-hide-minibuffer-maybe ()
+;;   "Hide minibuffer in Helm session if we use the header line as input field."
+;;   (when (with-helm-buffer helm-echo-input-in-header-line)
+;;     (let ((ov (make-overlay (point-min) (point-max) nil nil t)))
+;;       (overlay-put ov 'window (selected-window))
+;;       (overlay-put ov 'face
+;;                    (let ((bg-color (face-background 'default nil)))
+;;                      `(:background ,bg-color :foreground ,bg-color)))
+;;       (setq-local cursor-type nil))))
+
+
+;;     (add-hook 'helm-minibuffer-set-up-hook
+;; 	      'spacemacs//helm-hide-minibuffer-maybe))
+  
+;;   :bind
+;;   (("C-c h" . helm-command-prefix)
+;;    ("C-x C-f" . helm-find-files)
+;;    ("M-x" . helm-M-x)
+;;    ("C-x r b" . helm-filtered-bookmarks)
+;;    ("C-x b" . helm-buffers-list)
+;;    ("C-s" . helm-swoop)
+;;    ("M-y" . helm-show-kill-ring)
+;;    :map helm-map
+;;    ("<tab>" . helm-execute-persistent-action)
+;;    ("C-i" . helm-execute-persistent-action)
+;;    ("C-z" . helm-select-action))
+;;   )
 
 ;; Ace window
 (use-package ace-window
+  :defer t
   :config
   (setq aw-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l))
   :bind
-  ("C-x o" . ace-window))
+  (("C-x o" . ace-window)
+   ("M-p" . ace-window)))
 
 (use-package company
   :init (add-hook 'after-init-hook 'global-company-mode)
@@ -112,14 +191,19 @@
 (use-package diminish)
 (diminish 'auto-revert-mode)
 
+;; mwim
+(use-package mwim
+  :bind (("C-a" . mwim-beginning-of-code-or-line)
+	 ("C-e" . mwim-end-of-code-or-line)))
+
 ;; Themes
-;(use-package color-theme-sanityinc-tomorrow)
+(use-package color-theme-sanityinc-tomorrow)
 ;(use-package gruvbox-theme)
 (use-package ample-theme
   :init (progn (load-theme 'ample t t)
                (load-theme 'ample-flat t t)
                (load-theme 'ample-light t t)
-               (enable-theme 'ample))
+               (enable-theme 'ample-flat))
   :defer t)
 
 ;; Syntax checking
@@ -130,6 +214,9 @@
 
 ;; Magit
 (use-package magit
+  :init
+  (setq magit-completing-read-function 'ivy-completing-read)
+  :defer t
   :bind
   ("C-x g" . magit-status))
 
@@ -147,13 +234,16 @@
   (projectile-mode)
   :bind (:map projectile-mode-map
 	      ("C-c p $" . projectile-open-multiterm-at-root))
+  :quelpa
   )
 
 ;; Dired+
-(use-package dired+)
+(use-package dired+
+  :defer t)
 
 ;; Org mode
 (use-package org
+  :defer t
   :bind ("C-c c" . org-capture)
   :config
   (progn
@@ -165,8 +255,7 @@
        (elixir . t)))
     ))
 
-(setq org-agenda-files (list "~/Dropbox/org/gcal.org"
-			     "~/Dropbox/org/i.org"))
+(setq org-agenda-files (list "~/Dropbox/org/i.org"))
 
 (setq org-capture-templates
       '(("a" "Appointment" entry (file  "~/Dropbox/org/gcal.org" "Appointments")
@@ -181,27 +270,24 @@
 	 "* %?\nEntered on %U\n  %i\n  %a")
 	))
 
-(use-package org-gcal
-  :init (progn
-	  (add-hook 'org-agenda-mode-hook (lambda () (org-gcal-sync)))
-	  (add-hook 'org-capture-after-finalize-hook (lambda () (org-gcal-sync)))))
-
 (use-package org-journal
+  :defer t
   :init
   (setq org-journal-dir "~/Dropbox/org/journal")
-  (unbind-key "C-'" org-mode-map)
   )
 
 (use-package ox-reveal)
 
 ;; Exec path from shell
 (use-package exec-path-from-shell
+  :defer t
   :config
   (when (memq window-system '(mac ns))
     (exec-path-from-shell-initialize)))
 
 ;; YASnippet
 (use-package yasnippet
+  :defer t
   :init (add-hook 'term-mode-hook (lambda ()
 				    (yas-minor-mode -1)))
   :load-path "~/.emacs.d/plugins/yasnippet"
@@ -215,19 +301,44 @@
 ;; ;; Multi-term
 (setenv "PAGER" "cat")
 
-(use-package multi-term
-  :init (setq multi-term-program "/usr/local/bin/fish")
-  :bind
-  (("C-c t" . multi-term-dedicated-toggle)
-   ("C-'" . multi-term)
-   :map term-mode-map
-   ("M-]" . multi-term-next)
-   ("M-[" . multi-term-prev)
-   ))
+;; (use-package multi-term
+;;   :defer t
+;;   :init (setq multi-term-program "/usr/local/bin/fish")
+;;   :bind
+;;   (("C-c t" . multi-term-dedicated-toggle)
+;;    ("C-'" . multi-term)
+;;    :map term-mode-map
+;;    ("M-]" . multi-term-next)
+;;    ("M-[" . multi-term-prev)
+;;    ))
+
+;; eshell
+(global-set-key (kbd "C-c t") 'eshell)
+(add-hook 'eshell-mode-hook
+          (lambda ()
+            (eshell-cmpl-initialize)
+            (define-key eshell-mode-map [remap eshell-pcomplete] 'helm-esh-pcomplete)
+            (define-key eshell-mode-map (kbd "M-p") 'helm-eshell-history)))
+(add-hook 'eshell-mode-hook
+          (lambda ()
+            (define-key eshell-mode-map
+              (kbd "M-p")
+              'helm-eshell-history)))
+
+(defun visit-term-buffer ()
+  "Create or visit a terminal buffer."
+  (interactive)
+  (if (not (get-buffer "*eshell*"))
+      (progn
+        (split-window-sensibly (selected-window))
+        (other-window 1)
+        (eshell))
+    (switch-to-buffer-other-window "*eshell*")))
+(global-set-key (kbd "C-c '") 'visit-term-buffer)
 
 ;; Telephone line
-(use-package telephone-line
-  :config (telephone-line-mode 1))
+;; (use-package telephone-line
+;;   :config (telephone-line-mode 1))
 
 ;; Smartparens
 (use-package smartparens
@@ -235,7 +346,8 @@
   (progn
     (require 'smartparens-config)
     (sp-local-pair 'c-mode "{" nil :post-handlers '((my-create-newline-and-enter "RET")))
-    (sp-local-pair 'c++-mode "{" nil :post-handlers '((my-create-newline-and-enter "RET"))))
+    (sp-local-pair 'c++-mode "{" nil :post-handlers '((my-create-newline-and-enter "RET")))
+    (smartparens-mode t))
   :bind (:map smartparens-mode-map
 	      ("C-M-f" . sp-forward-sexp)
 	      ("C-M-b" . sp-backward-sexp)
@@ -261,32 +373,21 @@
   (forward-line -1)
   (indent-according-to-mode))
 
-
 ;; Expand region
 (use-package expand-region
+  :defer t
   :bind ("C-=" . er/expand-region))
-
-;; Visual Rexp
-(use-package visual-regexp
-  :bind ("M-%" . vr/query-replace))
-(use-package visual-regexp-steroids)
-
-;; zzz-to-char
-(use-package zzz-to-char
-  :bind (("M-z" . zzz-to-char)
-	 ("C-c M-z" . zzz-up-to-char)))
-
-(use-package easy-kill
-  :config (global-set-key [remap kill-ring-save] 'easy-kill))
 
 (use-package aggressive-indent)
 
 ;; Neotree
 (use-package neotree
+  :defer t
   :config (setq neo-theme (if (display-graphic-p) 'icons 'arrow)))
 
 ;; persp-mode
 (use-package persp-mode
+  :defer t
   :init
   (setq persp-autokill-buffer-on-remove 'kill-weak)
   (add-hook 'after-init-hook #'(lambda () (persp-mode 1))))
@@ -312,18 +413,16 @@
 
 ;; Fancy battery
 (use-package fancy-battery
+  :defer t
   :init (add-hook 'after-init-hook #'fancy-battery-mode))
 
 ;; Nice icons
-(use-package all-the-icons)
-
-;; Neotree
-(use-package neotree
-  :config (setq neo-theme (if (display-graphic-p) 'icons 'arrow))
-  )
+(use-package all-the-icons
+  :defer t)
 
 ;; Hydras
-(use-package hydra)
+(use-package hydra
+  :defer t)
 
 (defhydra hydra-zoom (global-map "<f2>")
   "zoom"
@@ -334,9 +433,8 @@
 
 ;; Apps
 (use-package ledger-mode
+  :defer t
   :mode "\\.ledger$")
-
-(use-package google-this)
 
 ;; Languages
 
@@ -349,15 +447,18 @@
 (setq python-shell-interpreter "python3")
 
 (use-package company-jedi
+  :defer t
   :init (add-hook 'python-mode-hook (lambda ()
 				      (add-to-list 'company-backends 'company-jedi))))
 
 (use-package elpy
+  :defer t
   :init (setq elpy-rpc-python-command "python3")
   :config (elpy-enable))
 
 ;; Rust
 (use-package rust-mode
+  :defer t
   :mode "\\.rs\\'"
   :bind (:map rust-mode-map ("C-c TAB" . rust-format-buffer))
   :config
@@ -365,15 +466,19 @@
     (sp-local-pair 'rust-mode "'" nil :actions nil)))
 
 (use-package flycheck-rust
+  :defer t
   :init (add-hook 'flycheck-mode-hook #'flycheck-rust-setup))
 
 (use-package cargo
+  :defer t
   :init (add-hook 'rust-mode-hook 'cargo-minor-mode))
 
-(use-package toml-mode)
+(use-package toml-mode
+  :defer t)
 
 ;; Golang
 (use-package go-mode
+  :defer t
   :mode ("\\.go\\'" . go-mode)
   :config
   (add-hook 'go-mode-hook
@@ -384,21 +489,25 @@
 
 ;; Elm
 (use-package elm-mode
+  :defer t
   :mode "\\.elm\\'"
   :init (add-hook 'elm-mode-hook #'elm-oracle-setup-ac))
 
 ;; Scala
 (use-package ensime
-  :pin melpa-stable)
+  :defer t)
 
 ;; Clojure
 (use-package clojure-mode
+  :defer t
   :mode "\\.clj\\'")
 
-(use-package cider)
+(use-package cider
+  :defer t)
 
 ;; Haskell
 (use-package haskell-mode
+  :defer t
   :mode ("(\\.hs\\'|\\.lhs')" . haskell-mode)
   :config (setq haskell-process-type 'stack-ghci)
   :bind (:map haskell-mode-map
@@ -407,18 +516,26 @@
 	      ("C-c C-t" . haskell-process-do-type)
 	      ("C-c C-k" . haskell-interactive-mode-clear)))
 
-(use-package intero)
+(use-package intero
+  :defer t)
 
 ;; Elixir
 (use-package elixir-mode
+  :defer t
   :mode "(\\.ex\\'|\\.exs')")
 
-(use-package alchemist)
-(use-package ob-elixir)
+(use-package alchemist
+  :defer t)
+(use-package ob-elixir
+  :defer t)
 
 ;; OCaml
-(use-package tuareg)
+(use-package tuareg
+  :defer t)
 
+;; Racket
+(use-package racket-mode
+  :defer t)
 
 ;; After package loads
 
