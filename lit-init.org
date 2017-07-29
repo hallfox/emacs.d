@@ -1,0 +1,434 @@
+#+STARTUP: overview
+
+* The Zen of Emacs
+  Emacs is clay, form it to your needs.
+
+* Interface Tweaks
+  These are some simple interface changes, attempting to patch up what I
+  believe are some pretty poor defaults. Nothing is installed here, just
+  tweaked
+#+BEGIN_SRC emacs-lisp
+  ;; Who am I?
+  (setq user-full-name "Taylor Foxhall")
+  (setq user-mail-address "lxmachina@gmail.com")
+
+  ;; GUI elements are a distraction
+  (tool-bar-mode -1)
+  (unless (memq window-system '(mac ns))
+    (menu-bar-mode -1))
+  (toggle-scroll-bar -1)
+
+  ;; Disable visual and audio alarms
+  (setq ring-bell-function 'ignore)
+
+  ;; Ask me y/n instead of yes/no
+  (fset 'yes-or-no-p 'y-or-n-p)
+
+  ;; I know what a GNU is
+  (setq inhibit-startup-screen t)
+
+  ;; Reload changes from disk always
+  (global-auto-revert-mode t)
+
+  ;; Highlight parens when you can
+  (show-paren-mode t)
+
+  ;; Let me undo window changes
+  (when (fboundp 'winner-mode)
+    (winner-mode t))
+
+  ;; Keep track of where I've been
+  (use-package recentf
+    :init
+    ;; But not too much
+    (setq recentf-max-menu-items 30))
+
+  ;; Code is only as good as we make it
+  (use-package compile
+    :bind
+    (("C-c C-m" . compile)
+     ("C-c m" . recompile))
+    :config
+    (setq-default compilation-scroll-output t)
+    ;; Colorize compilation buffers
+    (use-package ansi-color
+      :config
+      (defun colorize-compilation-buffer ()
+        (when (eq major-mode 'compilation-mode)
+          (ansi-color-apply-on-region compilation-filter-start (point-max))))
+      (add-hook 'compilation-filter-hook 'colorize-compilation-buffer)))
+
+  ;; Hide minor modes I don't care about knowing about
+  (use-package diminish)
+#+END_SRC
+
+* Secrets
+  Sometimes I need to tell Emacs something that the rest of the world doesn't
+  need to know about, so I put it in a secret file.
+
+#+BEGIN_SRC emacs-lisp
+  ;; Load secrets file
+
+  (let ((secrets-file (expand-file-name "secrets.el" user-emacs-directory)))
+    (when (file-exists-p secrets-file)
+      (load secrets-file)))
+#+END_SRC
+
+* =try=
+  Sometimes it's hard to tell what a package does from its description. With
+  =try=, you can test it out and if you don't like it, it'll disappear the
+  next time you open Emacs.
+
+#+BEGIN_SRC emacs-lisp
+  (use-package try
+    :ensure t)
+#+END_SRC
+
+* =which-key=
+  It can be really hard to tell what keys do what in Emacs. =which-key= gives
+  you a preview of what keys are available with each prefix you type.
+
+#+BEGIN_SRC emacs-lisp
+  (use-package which-key
+    :ensure t
+    :diminish which-key-mode
+    :config
+    (which-key-mode))
+#+END_SRC
+
+* Searching
+  Emacs has a decent completion system, but can be better. =ido= and =smex=,
+  =ivy=, and =helm= are the most common I've seen, listed from most minimal to
+  most feature rich. Like most things, I took the middle road.
+
+#+BEGIN_SRC emacs-lisp
+  (use-package ivy
+    :ensure t
+    :init
+    ;; See recent buffers even if they aren't open
+    (setq ivy-use-virtual-buffers t)
+    ;; Wrap around when you reach the bottom
+    (setq ivy-wrap t)
+    ;; Get rid of . and .. from completion
+    (setq ivy-extra-directories nil)
+    :bind
+    (("C-c C-r" . ivy-resume))
+    :config
+    (ivy-mode 1)
+    (use-package swiper
+      :ensure t
+      :bind
+      (("C-s"     . swiper)))
+    (use-package counsel
+      :ensure t
+      :bind
+      (("M-x"     . counsel-M-x)
+       ("C-x C-f" . counsel-find-file)
+       ("C-c s"   . counsel-rg)
+       ("C-x C-r" . counsel-recentf)
+       ("C-c j"   . counsel-imenu)
+       ("C-x r b" . counsel-bookmark)
+       ("M-y"     . counsel-yank-pop)
+       ("C-h f"   . counsel-describe-function)
+       ("C-h v"   . counsel-describe-variable))))
+#+END_SRC
+
+* =avy=
+  Need to get around? Annoyed by how you have to think about what combination
+  of =M-f= and =M-{= you need to get there? Fear no more, for we have decision
+  trees.
+
+#+BEGIN_SRC emacs-lisp
+  (use-package avy
+    :ensure t
+    :bind
+    (("C-;" . avy-goto-word-or-subword-1)))
+
+  (use-package ace-window
+    :ensure t
+    :init
+    (setq aw-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l))
+    :bind
+    (("C-x o" . ace-window)))
+#+END_SRC
+
+* Code Completion
+  Having a way to autocomplete whatever you're typing can be nice, especially
+  if you work with ridiculously long names for packages, modules, or et cetera
+  classes. There are two main packages for this in Emacs, =auto-complete= and
+  =company-mode=.
+
+#+BEGIN_SRC emacs-lisp
+  (use-package company
+    :ensure t
+    :init (add-hook 'after-init-hook 'global-company-mode)
+    :diminish company-mode)
+#+END_SRC
+
+* Interface Enhancements
+  Sometimes emacs just doesn't provide enough to get its interface to do what
+  you want in a few lines, so we have packages for this.
+
+#+BEGIN_SRC emacs-lisp
+  ;; Go to the beginning of a line means go to the first textual character,
+  ;; not column 0
+  (use-package mwim
+    :ensure t
+    :bind (("C-a" . mwim-beginning-of-code-or-line)
+	   ("C-e" . mwim-end-of-code-or-line)))
+
+  ;; Make browsing files better than ever
+  (use-package dired+
+    :defer t)
+
+  ;; Grow a selection until we can't anymore
+  (use-package expand-region
+    :defer t
+    :bind ("M-=" . er/expand-region))
+#+END_SRC
+
+* Themes
+  OOH LOOK AT THE PRETTY COLORS
+
+#+BEGIN_SRC emacs-lisp
+(when (display-graphic-p)
+  (use-package solarized-theme
+    :ensure t)
+
+  (use-package zenburn-theme
+    :disabled t
+    :ensure t)
+
+  (load-theme 'solarized-dark t))
+#+END_SRC
+
+* Syntax Checking
+  We don't need to stinking compiler to tell us our code is wrong. =flycheck=
+  can do this for us.
+
+#+BEGIN_SRC emacs-lisp
+  (use-package flycheck
+    :ensure t
+    :config
+    (global-flycheck-mode t))
+#+END_SRC
+
+* Version Control
+  Any sane developer these days has to be using some source control. Git,
+  being as popular as it is, has some awesome support in the =magit= package.
+
+#+BEGIN_SRC emacs-lisp
+  (use-package magit
+    :ensure t
+    :init
+    (setq magit-completing-read-function 'ivy-completing-read)
+    :bind
+    ("C-c g" . magit-status))
+#+END_SRC
+
+* =projectile=
+  Have some non-trivial codebase? Of course you do, and you want to find some
+  very specific file and you want it now!
+
+#+BEGIN_SRC emacs-lisp
+  (use-package projectile
+    :ensure t
+    :init
+    (setq projectile-completion-system 'ivy)
+    :config
+    (projectile-global-mode))
+
+  (use-package counsel-projectile
+    :ensure t
+    :config
+    (counsel-projectile-on))
+#+END_SRC
+
+* =org-mode=
+  Many consider this to be the killer Emacs package. I'm not a heavy user,
+  but it is pretty killer.
+
+#+BEGIN_SRC emacs-lisp
+  (use-package org-journal
+    :ensure t
+    :init
+    (setq org-journal-dir "~/Dropbox/org/journal"))
+
+  ;; Reveal.js for org mode
+  (use-package ox-reveal)
+#+END_SRC
+
+* =exec-path-from-shell=
+  It's nice to let Emacs know what custom environment you're rocking in your
+  shell.
+
+#+BEGIN_SRC emacs-lisp
+  (use-package exec-path-from-shell
+    :ensure t
+    :config
+    (when (memq window-system '(mac ns))
+      (exec-path-from-shell-initialize)))
+#+END_SRC
+
+* =yasnippet=
+  Boilerplate is boring but sometimes a necessary part of writing code.
+  Snippets alleviate this.
+
+#+BEGIN_SRC emacs-lisp
+  (use-package yasnippet
+    :ensure t
+    :init (add-hook 'term-mode-hook (lambda ()
+				      (yas-minor-mode -1)))
+    :config
+    (yas-global-mode 1))
+#+END_SRC
+
+* =eshell=
+  Sometimes you just need to pop into a shell and get stuff done. Emacs
+  understands, and it gives you a way to run a UNIX-y shell on any platform
+  for this.
+
+#+BEGIN_SRC emacs-lisp
+  (defun eshell-here ()
+    "Opens up a new shell in the directory associated with the
+  current buffer's file. The eshell is renamed to match that
+  directory to make multiple eshell windows easier."
+    (interactive)
+    (let* ((parent (if (buffer-file-name)
+                       (file-name-directory (buffer-file-name))
+                     default-directory))
+           (height (/ (window-total-height) 3))
+           (name   (car (last (split-string parent "/" t)))))
+      (split-window-vertically (- height))
+      (other-window 1)
+      (eshell "new")
+      (rename-buffer (concat "*eshell: " name "*"))
+
+      (insert (concat "ls"))
+      (eshell-send-input)))
+
+  (use-package eshell
+    :bind
+    (("C-c !" . eshell-here)))
+#+END_SRC
+
+* =smartparens=
+  Parens are hard to come by these days, good thing we have a way to organize
+  them.
+
+#+BEGIN_SRC emacs-lisp
+  (defun create-newline-and-enter (&rest _ignored)
+    "Open a new brace or bracket expression, with relevant newlines and indent."
+    (newline)
+    (indent-according-to-mode)
+    (forward-line -1)
+    (indent-according-to-mode))
+
+  (use-package smartparens
+    :ensure t
+    :bind
+    (("C-M-f" . sp-forward-sexp)
+     ("C-M-b" . sp-backward-sexp)
+     ("C-M-n" . sp-next-sexp)
+     ("C-M-p" . sp-previous-sexp)
+     ("C-M-a" . sp-begginning-of-sexp)
+     ("C-M-e" . sp-end-of-sexp)
+     ("C-M-d" . sp-kill-sexp)
+     ("C-M-DEL" . sp-backward-kill-sexp)
+     ("C-M-t" . sp-transpose-sexp)
+     ("C-(" . sp-backward-slurp-sexp)
+     ("C-)" . sp-forward-slurp-sexp)
+     ("C-S-(" . sp-backward-barf-sexp)
+     ("C-S-)" . sp-forward-barf-sexp)
+     ("C-c (" . sp-rewrap-sexp)
+     ("C-c )" . sp-unwrap-sexp))
+    :config
+    (use-package smartparens-config)
+    (sp-local-pair 'c-mode "{" nil
+                   :post-handlers '((create-newline-and-enter "RET")))
+    (sp-local-pair 'c++-mode "{" nil
+                   :post-handlers '((create-newline-and-enter "RET")))
+    (smartparens-global-mode t)
+    (show-smartparens-global-mode t))
+#+END_SRC
+
+* Programming Languages
+  Computation expressed through human language.
+** C/C++
+#+BEGIN_SRC emacs-lisp
+  (setq c-default-style "gnu"
+        c-basic-offset 2)
+#+END_SRC
+
+** Python
+#+BEGIN_SRC emacs-lisp
+  (setq py-python-command "python3")
+  (setq python-shell-interpreter "python3")
+#+END_SRC
+
+** Rust
+   The systems programming language that runs blazingly fast, prevents
+   segfaults, and guarantees thread safety. FEARLESS CONCURRENCY.
+#+BEGIN_SRC emacs-lisp
+  (use-package rust-mode
+    :ensure t
+    :config
+    (when (fboundp 'sp-local-pair)
+      (sp-local-pair 'rust-mode "'" nil :actions nil)))
+
+  (use-package flycheck-rust
+    :ensure t
+    :init (add-hook 'flycheck-mode-hook #'flycheck-rust-setup))
+
+  (use-package cargo
+    :ensure t
+    :init (add-hook 'rust-mode-hook 'cargo-minor-mode))
+
+  (use-package toml-mode
+    :ensure t)
+#+END_SRC
+
+** Golang
+#+BEGIN_SRC emacs-lisp
+  (use-package go-mode
+    :ensure t
+    :config
+    (add-hook 'go-mode-hook
+            (lambda ()
+              (add-hook 'before-save-hook 'gofmt-before-save)
+              (setq tab-width 4)
+              (setq indent-tabs-mode 1))))
+#+END_SRC
+
+** Clojure
+#+BEGIN_SRC emacs-lisp
+  (use-package clojure-mode
+    :ensure t)
+
+  (use-package cider
+    :ensure t)
+#+END_SRC
+
+** Haskell
+   Pure computations with monads
+#+BEGIN_SRC emacs-lisp
+  (use-package haskell-mode
+    :ensure t
+    :init
+    (setq haskell-process-type 'stack-ghci)
+    :bind
+    (:map haskell-mode-map
+	  ("C-c C-z" . haskell-interactive-bring)
+	  ("C-c C-l" . haskell-process-load-or-reload)
+	  ("C-c C-t" . haskell-process-do-type)
+	  ("C-c C-k" . haskell-interactive-mode-clear)))
+#+END_SRC
+
+** Elixir
+#+BEGIN_SRC emacs-lisp
+  (use-package elixir-mode
+    :ensure t)
+
+  (use-package alchemist
+    :ensure t)
+#+END_SRC
