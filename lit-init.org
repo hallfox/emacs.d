@@ -60,6 +60,11 @@
 
   ;; Hide minor modes I don't care about knowing about
   (use-package diminish)
+
+  ;; Handle backup files
+  (setq backup-directory-alist `(("." . "~/.saves")))
+  (setq backup-by-copying t)
+  (setq delete-old-versions t)
 #+END_SRC
 
 * Secrets
